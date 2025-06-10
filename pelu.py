@@ -100,9 +100,10 @@ try:
 
     servicios = hoja_servicios.col_values(1)[1:]
     servicios_elegidos = st.multiselect("✂️ Seleccioná hasta 4 servicios", servicios)
-    if len(servicios_elegidos) > 4:
-        st.error("⚠️ Solo podés seleccionar hasta 4 servicios.")
-        servicios_elegidos = servicios_elegidos[:4]
+
+if len(servicios_elegidos) > 4:
+    st.error("⚠️ Solo podés seleccionar hasta 4 servicios.")
+    servicios_elegidos = servicios_elegidos[:4]
 
         empleados = hoja_empleados.col_values(1)[1:]
         empleado = st.selectbox("👤 Seleccioná al empleado", empleados)
