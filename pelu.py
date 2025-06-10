@@ -2,12 +2,7 @@ import streamlit as st
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from datetime import datetime, timedelta
-import json
-import locale
-locale.setlocale(locale.LC_TIME, 'es_ES.UTF-8')  # Linux/macOS
-# locale.setlocale(locale.LC_TIME, 'Spanish_Spain')  # Windows (comentá uno u otro)
 from babel.dates import format_date
-
 
 # --- Conexión a Google Sheets usando Streamlit Secrets ---
 def conectar_gsheets():
@@ -96,13 +91,12 @@ try:
 
     feriados = obtener_feriados(hoja_feriados)
     fechas = fechas_disponibles(feriados)
-    # Mostrar las fechas en formato largo en español
-opciones_fechas = [format_date(f, format='full', locale='es') for f in fechas]
-opcion_seleccionada = st.selectbox("📅 Seleccioná una fecha", opciones_fechas)
 
-# Recuperar la fecha real desde la selección
-fecha_real = fechas[opciones_fechas.index(opcion_seleccionada)]
-fecha_seleccionada = fecha_real.strftime("%d/%m/%Y")  # Este valor lo seguís usando internamente
+    # ✅ Mostrar fechas en formato completo en español
+    opciones_fechas = [format_date(f, format='full', locale='es') for f in fechas]
+    opcion_seleccionada = st.selectbox("📅 Seleccioná una fecha", opciones_fechas)
+    fecha_real = fechas[opciones_fechas.index(opcion_seleccionada)]
+    fecha_seleccionada = fecha_real.strftime("%d/%m/%Y")
 
     servicios = hoja_servicios.col_values(1)[1:]
     servicios_elegidos = st.multiselect("✂️ Seleccioná los servicios", servicios)
@@ -113,7 +107,7 @@ fecha_seleccionada = fecha_real.strftime("%d/%m/%Y")  # Este valor lo seguís us
         duracion_total = obtener_duracion(servicios_elegidos, hoja_servicios)
         hora_disponible = buscar_turno_disponible(
             hoja_pelubd,
-            datetime.strptime(fecha_seleccionada, "%d/%m/%Y").date(),
+            fecha_real,
             duracion_total,
             empleado
         )
@@ -140,7 +134,6 @@ fecha_seleccionada = fecha_real.strftime("%d/%m/%Y")  # Este valor lo seguís us
                         st.success("✅ Turno registrado correctamente.")
                     else:
                         st.error("⚠️ Completá todos los datos del formulario.")
-
         else:
             st.warning("❌ No hay horarios disponibles para ese día y servicios.")
     else:
