@@ -6,6 +6,7 @@ import json
 import locale
 locale.setlocale(locale.LC_TIME, 'es_ES.UTF-8')  # Linux/macOS
 # locale.setlocale(locale.LC_TIME, 'Spanish_Spain')  # Windows (comentá uno u otro)
+from babel.dates import format_date
 
 
 # --- Conexión a Google Sheets usando Streamlit Secrets ---
@@ -95,9 +96,13 @@ try:
 
     feriados = obtener_feriados(hoja_feriados)
     fechas = fechas_disponibles(feriados)
-    opciones_fechas = [f.strftime('%A %d de %B de %Y').capitalize() for f in fechas]
-fecha_elegida_idx = st.selectbox("📅 Seleccioná una fecha", opciones_fechas)
-fecha_seleccionada = fechas[opciones_fechas.index(fecha_elegida_idx)].strftime("%d/%m/%Y")
+    # Mostrar las fechas en formato largo en español
+opciones_fechas = [format_date(f, format='full', locale='es') for f in fechas]
+opcion_seleccionada = st.selectbox("📅 Seleccioná una fecha", opciones_fechas)
+
+# Recuperar la fecha real desde la selección
+fecha_real = fechas[opciones_fechas.index(opcion_seleccionada)]
+fecha_seleccionada = fecha_real.strftime("%d/%m/%Y")  # Este valor lo seguís usando internamente
 
     servicios = hoja_servicios.col_values(1)[1:]
     servicios_elegidos = st.multiselect("✂️ Seleccioná los servicios", servicios)
