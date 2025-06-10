@@ -4,7 +4,6 @@ from oauth2client.service_account import ServiceAccountCredentials
 from datetime import datetime, timedelta
 from babel.dates import format_date
 
-# --- Conexión a Google Sheets usando Streamlit Secrets ---
 def conectar_gsheets():
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
     creds_dict = st.secrets["google_service_account"]
@@ -12,11 +11,9 @@ def conectar_gsheets():
     client = gspread.authorize(creds)
     return client.open("snturnos")
 
-# --- Obtener feriados ---
 def obtener_feriados(sheet):
-    return set(sheet.col_values(1)[1:])  # Salta encabezado
+    return set(sheet.col_values(1)[1:]) 
 
-# --- Generar fechas válidas (15 días futuros, solo martes a sábados y sin feriados) ---
 def fechas_disponibles(feriados, max_dias=15):
     hoy = datetime.today().date()
     fechas_validas = []
@@ -27,7 +24,6 @@ def fechas_disponibles(feriados, max_dias=15):
         dia += timedelta(days=1)
     return fechas_validas
 
-# --- Obtener duración total de servicios ---
 def obtener_duracion(servicios_seleccionados, servicios_sheet):
     servicios = servicios_sheet.get_all_records()
     duracion_total = 0
@@ -36,7 +32,6 @@ def obtener_duracion(servicios_seleccionados, servicios_sheet):
             duracion_total += int(servicio['Duración'])
     return duracion_total
 
-# --- Buscar próximo horario disponible ---
 def buscar_turno_disponible(sheet, fecha, duracion, empleado):
     turnos = sheet.get_all_records()
     hora_inicio = datetime.combine(fecha, datetime.strptime("07:00", "%H:%M").time())
@@ -58,7 +53,6 @@ def buscar_turno_disponible(sheet, fecha, duracion, empleado):
         hora_inicio += timedelta(minutes=5)
     return None
 
-# --- Guardar turno ---
 def guardar_turno(bd_sheet, cliente_sheet, datos):
     bd_sheet.append_row([
         datos['fecha'],
@@ -78,7 +72,6 @@ def guardar_turno(bd_sheet, cliente_sheet, datos):
         f"{datos['duracion']} min"
     ])
 
-# --- App Streamlit ---
 st.title("💈 Sistema de Turnos Peluquería")
 
 try:
@@ -91,28 +84,30 @@ try:
 
     feriados = obtener_feriados(hoja_feriados)
     fechas = fechas_disponibles(feriados)
-
-    # ✅ Mostrar fechas en formato completo en español
     opciones_fechas = [format_date(f, format='full', locale='es') for f in fechas]
-    opcion_seleccionada = st.selectbox("📅 Seleccioná una fecha", opciones_fechas)
-    fecha_real = fechas[opciones_fechas.index(opcion_seleccionada)]
-    fecha_seleccionada = fecha_real.strftime("%d/%m/%Y")
+    fecha_map = dict(zip(opciones_fechas, fechas))
+    fecha_str = st.selectbox("📅 Seleccioná una fecha", opciones_fechas)
+    fecha_seleccionada = fecha_map[fecha_str]
 
     servicios = hoja_servicios.col_values(1)[1:]
-    servicios_elegidos = st.multiselect("✂️ Seleccioná hasta 4 servicios", servicios)
 
-if len(servicios_elegidos) > 4:
-    st.error("⚠️ Solo podés seleccionar hasta 4 servicios.")
-    servicios_elegidos = servicios_elegidos[:4]
+    # Cuatro selectores independientes
+    trabajo1 = st.selectbox("Trabajo 1", [""] + servicios, key="trabajo1")
+    trabajo2 = st.selectbox("Trabajo 2", [""] + servicios, key="trabajo2")
+    trabajo3 = st.selectbox("Trabajo 3", [""] + servicios, key="trabajo3")
+    trabajo4 = st.selectbox("Trabajo 4", [""] + servicios, key="trabajo4")
 
-        empleados = hoja_empleados.col_values(1)[1:]
-        empleado = st.selectbox("👤 Seleccioná al empleado", empleados)
+    # Filtrar trabajos elegidos, sin vacíos y sin repetidos
+    trabajos_elegidos = list({t for t in [trabajo1, trabajo2, trabajo3, trabajo4] if t})
 
-    if servicios_elegidos and empleado:
-        duracion_total = obtener_duracion(servicios_elegidos, hoja_servicios)
+    empleados = hoja_empleados.col_values(1)[1:]
+    empleado = st.selectbox("👤 Seleccioná al empleado", empleados)
+
+    if trabajos_elegidos and empleado:
+        duracion_total = obtener_duracion(trabajos_elegidos, hoja_servicios)
         hora_disponible = buscar_turno_disponible(
             hoja_pelubd,
-            fecha_real,
+            fecha_seleccionada,
             duracion_total,
             empleado
         )
@@ -127,11 +122,11 @@ if len(servicios_elegidos) > 4:
                 if enviar:
                     if nombre and dni and telefono:
                         guardar_turno(hoja_pelubd, hoja_clientes, {
-                            "fecha": fecha_seleccionada,
+                            "fecha": fecha_seleccionada.strftime("%d/%m/%Y"),
                             "empleado": empleado,
                             "hora": hora_disponible,
                             "duracion": duracion_total,
-                            "servicios": servicios_elegidos,
+                            "servicios": trabajos_elegidos,
                             "nombre": nombre,
                             "dni": dni,
                             "telefono": telefono
@@ -142,7 +137,7 @@ if len(servicios_elegidos) > 4:
         else:
             st.warning("❌ No hay horarios disponibles para ese día y servicios.")
     else:
-        st.info("⏳ Seleccioná servicios y un empleado para ver la disponibilidad.")
+        st.info("⏳ Seleccioná trabajos y un empleado para ver la disponibilidad.")
 
 except Exception as e:
     st.error(f"⚠️ Error al conectar con Google Sheets: {e}")
