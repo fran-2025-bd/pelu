@@ -3,6 +3,10 @@ import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from datetime import datetime, timedelta
 import json
+import locale
+locale.setlocale(locale.LC_TIME, 'es_ES.UTF-8')  # Linux/macOS
+# locale.setlocale(locale.LC_TIME, 'Spanish_Spain')  # Windows (comentá uno u otro)
+
 
 # --- Conexión a Google Sheets usando Streamlit Secrets ---
 def conectar_gsheets():
@@ -91,7 +95,10 @@ try:
 
     feriados = obtener_feriados(hoja_feriados)
     fechas = fechas_disponibles(feriados)
-    fecha_seleccionada = st.selectbox("📅 Seleccioná una fecha", [f.strftime("%d/%m/%Y") for f in fechas])
+    opciones_fechas = [f.strftime('%A %d de %B de %Y').capitalize() for f in fechas]
+fecha_elegida_idx = st.selectbox("📅 Seleccioná una fecha", opciones_fechas)
+fecha_seleccionada = fechas[opciones_fechas.index(fecha_elegida_idx)].strftime("%d/%m/%Y")
+
     servicios = hoja_servicios.col_values(1)[1:]
     servicios_elegidos = st.multiselect("✂️ Seleccioná los servicios", servicios)
     empleados = hoja_empleados.col_values(1)[1:]
